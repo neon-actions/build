@@ -1,0 +1,80 @@
+name: 'Build Neon Library'
+description: 'Build a Neon library.'
+inputs:
+  dir:
+    description: 'Local directory to produce the build.'
+    required: false
+    default: 'dist'
+  node-version:
+    description: 'Node version to install.'
+    required: false
+    default: ''
+  registry-url:
+    description: 'npm registry URL.'
+    required: false
+    default: ''
+  github-release:
+    description: 'Filename or glob to fetch from GitHub releases.'
+    required: false
+    default: ''
+  npm-publish:
+    description: 'Publish to npm.'
+    required: false
+    default: false
+  use-cross:
+    description: 'Use cross-rs to run the build instead of cargo.'
+    required: false
+    default: false
+  target:
+    description: 'Rust target to build for.'
+    required: false
+    default: ''
+branding:
+  icon: 'cpu'
+  color: 'blue'
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    - name: Install Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ inputs['node-version'] }}
+        registry-url: ${{ inputs['registry-url'] }}
+        cache: npm
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      target: ${{ inputs.target }}
+      override: true
+    - name: Install Dependencies
+      shell: bash
+      run: npm install
+    - name: Build Target
+      if: ${{ inputs['use-cross'] != 'true' && inputs.target != '' }}
+      shell: bash
+      env:
+        CARGO_BUILD_TARGET: ${{ inputs.target }}
+      run: npm run build
+    - name: Build
+      if: ${{ inputs['use-cross'] != 'true' && inputs.target == '' }}
+      shell: bash
+      run: npm run build
+    - name: Cross
+      if: ${{ inputs['use-cross'] == 'true' }}
+      env:
+        CARGO_BUILD_TARGET: ${{ inputs.target }}
+      shell: bash
+      run: npm run cross
+    - name: Pack
+      shell: bash
+      run: npm run pack-build -- --target ${{ inputs.target }}
+    - name: Release
+      if: ${{ inputs['github-release'] == 'true' }}
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ inputs.dir }}/*.tgz
+    - name: Publish
+      if: ${{ inputs['npm-publish'] == 'true' }}
+      shell: bash
+      run: npm publish
