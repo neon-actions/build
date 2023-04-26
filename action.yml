@@ -9,6 +9,10 @@ inputs:
     description: 'Node version to install.'
     required: false
     default: ''
+  rust-version:
+    description: 'Rust version to install.'
+    required: false
+    default: 'stable'
   registry-url:
     description: 'npm registry URL.'
     required: false
@@ -46,6 +50,7 @@ runs:
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
+        toolchain: ${{ inputs['rust-version'] }}
         target: ${{ inputs.target }}
         override: true
     - name: Install Dependencies
