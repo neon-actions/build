@@ -45,8 +45,9 @@ runs:
         cache: npm
     - name: Install Rust
       uses: actions-rs/toolchain@v1
-      target: ${{ inputs.target }}
-      override: true
+      with:
+        target: ${{ inputs.target }}
+        override: true
     - name: Install Dependencies
       shell: bash
       run: npm install
