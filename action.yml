@@ -53,6 +53,11 @@ runs:
         toolchain: ${{ inputs['rust-version'] }}
         target: ${{ inputs.target }}
         override: true
+    - name: Install cross-rs
+      if: ${{ inputs['use-cross'] == 'true' }}
+      uses: baptiste0928/cargo-install@v2
+      with:
+        crate: cross
     - name: Install Dependencies
       shell: bash
       run: npm install
