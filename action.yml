@@ -1,8 +1,12 @@
 name: 'Build Neon Library'
 description: 'Build a Neon library.'
 inputs:
-  dir:
-    description: 'Local directory to produce the build.'
+  working-directory:
+    description: 'Working directory to run commands from, relative to repo root.'
+    required: false
+    default: '.'
+  output-directory:
+    description: 'Directory to produce the build, relative to working-directory.'
     required: false
     default: 'dist'
   node-version:
@@ -61,31 +65,37 @@ runs:
     - name: Install Dependencies
       shell: bash
       run: npm install
+      working-directory: ${{ inputs['working-directory'] }}
     - name: Build Target
       if: ${{ inputs['use-cross'] != 'true' && inputs.target != '' }}
       shell: bash
       env:
         CARGO_BUILD_TARGET: ${{ inputs.target }}
       run: npm run build
+      working-directory: ${{ inputs['working-directory'] }}
     - name: Build
       if: ${{ inputs['use-cross'] != 'true' && inputs.target == '' }}
       shell: bash
       run: npm run build
+      working-directory: ${{ inputs['working-directory'] }}
     - name: Cross
       if: ${{ inputs['use-cross'] == 'true' }}
       env:
         CARGO_BUILD_TARGET: ${{ inputs.target }}
       shell: bash
       run: npm run cross
+      working-directory: ${{ inputs['working-directory'] }}
     - name: Pack
       shell: bash
-      run: npm run pack-build -- --target ${{ inputs.target }}
+      run: npm run pack-build -- --target ${{ inputs.target }} --out-dir ${{ inputs['output-directory'] }}
+      working-directory: ${{ inputs['working-directory'] }}
     - name: Release
       if: ${{ inputs['github-release'] == 'true' }}
       uses: softprops/action-gh-release@v1
       with:
-        files: ${{ inputs.dir }}/*.tgz
+        files: ${{ inputs['working-directory'] }}/${{ inputs['output-directory'] }}/*.tgz
     - name: Publish
       if: ${{ inputs['npm-publish'] == 'true' }}
       shell: bash
       run: npm publish
+      working-directory: ${{ inputs['working-directory'] }}
