@@ -5,6 +5,10 @@ inputs:
     description: 'Working directory to run commands from, relative to repo root.'
     required: false
     default: '.'
+  input-directory:
+    description: 'Directory containing pre-existing binary package structure, relative to working-directory.'
+    required: false
+    default: ''
   output-directory:
     description: 'Directory to produce the build, relative to working-directory.'
     required: false
@@ -85,9 +89,15 @@ runs:
       shell: bash
       run: npm run cross
       working-directory: ${{ inputs['working-directory'] }}
-    - name: Pack
+    - name: Pack (from scratch)
+      if: ${{ inputs['input-directory'] == '' }}
       shell: bash
       run: npm run pack-build -- --target ${{ inputs.target }} --out-dir ${{ inputs['output-directory'] }}
+      working-directory: ${{ inputs['working-directory'] }}
+    - name: Pack (from existing package directory)
+      if: ${{ inputs['input-directory'] != '' }}
+      shell: bash
+      run: npm run pack-build -- --target ${{ inputs.target }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
       if: ${{ inputs['github-release'] == 'true' }}
