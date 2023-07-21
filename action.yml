@@ -47,6 +47,12 @@ branding:
 runs:
   using: "composite"
   steps:
+    - name: Determine Rust Target
+      if: ${{ inputs.target != '' }}
+      id: target
+      shell: bash
+      run: |
+        echo "rust=$(cat package.json | jq -r .neon.targets.\"${{ inputs.target }}\"")" > $GITHUB_OUTPUT
     - name: Install Node
       uses: actions/setup-node@v3
       with:
@@ -57,7 +63,7 @@ runs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ inputs['rust-version'] }}
-        target: ${{ inputs.target }}
+        target: ${{ steps.target.outputs.rust }}
         override: true
     - name: Install cross-rs
       if: ${{ inputs['use-cross'] == 'true' }}
@@ -68,12 +74,6 @@ runs:
       shell: bash
       run: npm install
       working-directory: ${{ inputs['working-directory'] }}
-    - name: Determine Rust Target
-      if: ${{ inputs.target != '' }}
-      id: target
-      shell: bash
-      run: |
-        echo "rust=$(cat package.json | jq -r .neon.targets.\"${{ inputs.target }}\"")" > $GITHUB_OUTPUT
     - name: Build Target
       if: ${{ inputs['use-cross'] != 'true' && inputs.target != '' }}
       shell: bash
