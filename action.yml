@@ -38,7 +38,7 @@ inputs:
     required: false
     default: false
   target:
-    description: 'Rust target to build for.'
+    description: 'Node target to build for.'
     required: false
     default: ''
 branding:
@@ -68,11 +68,17 @@ runs:
       shell: bash
       run: npm install
       working-directory: ${{ inputs['working-directory'] }}
+    - name: Determine Rust Target
+      if: ${{ inputs.target != '' }}
+      id: target
+      shell: bash
+      run: |
+        echo "rust=$(cat package.json | jq -r .neon.targets.\"${{ inputs.target }}\"")" > $GITHUB_OUTPUT
     - name: Build Target
       if: ${{ inputs['use-cross'] != 'true' && inputs.target != '' }}
       shell: bash
       env:
-        CARGO_BUILD_TARGET: ${{ inputs.target }}
+        CARGO_BUILD_TARGET: ${{ steps.target.outputs.rust }}
       run: npm run build
       working-directory: ${{ inputs['working-directory'] }}
     - name: Build
@@ -83,19 +89,19 @@ runs:
     - name: Cross
       if: ${{ inputs['use-cross'] == 'true' }}
       env:
-        CARGO_BUILD_TARGET: ${{ inputs.target }}
+        CARGO_BUILD_TARGET: ${{ steps.target.outputs.rust }}
       shell: bash
       run: npm run cross
       working-directory: ${{ inputs['working-directory'] }}
     - name: Pack (from scratch)
       if: ${{ inputs['input-directory'] == '' }}
       shell: bash
-      run: npm run pack-build -- --target ${{ inputs.target }} --out-dir ${{ inputs['output-directory'] }}
+      run: npm run pack-build -- --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
       working-directory: ${{ inputs['working-directory'] }}
     - name: Pack (from existing package directory)
       if: ${{ inputs['input-directory'] != '' }}
       shell: bash
-      run: npm run pack-build -- --target ${{ inputs.target }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
+      run: npm run pack-build -- --target ${{ steps.target.outputs.rust }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
       if: ${{ inputs['github-release'] == 'true' }}
