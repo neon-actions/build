@@ -53,6 +53,7 @@ runs:
       shell: bash
       run: |
         echo "rust=$(cat package.json | jq -r .neon.targets.\"${{ inputs.target }}\")" > $GITHUB_OUTPUT
+      working-directory: ${{ inputs['working-directory ']}}
     - name: Install Node
       uses: actions/setup-node@v3
       with:
