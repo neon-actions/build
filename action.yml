@@ -97,12 +97,27 @@ runs:
     - name: Pack (from scratch)
       if: ${{ inputs['input-directory'] == '' }}
       shell: bash
-      run: npm run pack-build -- --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
+      run: |
+        if jq -e '.scripts | has("pack-target")' package.json > /dev/null ; then
+          npm run pack-target -- --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
+        elif jq -e '.scripts | has("pack-build")' package.json > /dev/null ; then
+          # this name was confusingly generic but we'll keep it for now for backwards compatibility
+          npm run pack-build -- --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
+        else
+          npx neon tarball --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
+        fi
       working-directory: ${{ inputs['working-directory'] }}
     - name: Pack (from existing package directory)
       if: ${{ inputs['input-directory'] != '' }}
       shell: bash
-      run: npm run pack-build -- --target ${{ steps.target.outputs.rust }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
+      run: |
+        if jq -e '.scripts | has("pack-target")' package.json > /dev/null ; then
+          npm run pack-target -- --target ${{ steps.target.outputs.rust }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
+        elif jq -e '.scripts | has("pack-build")' package.json > /dev/null ; then
+          npm run pack-build -- --target ${{ steps.target.outputs.rust }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
+        else
+          npx neon tarball --target ${{ steps.target.outputs.rust }} --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
+        fi
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
       if: ${{ inputs['github-release'] == 'true' }}
