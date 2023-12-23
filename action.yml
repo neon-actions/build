@@ -50,10 +50,11 @@ runs:
       id: vars
       shell: bash
       run: |
-        if [[ "${{ inputs['use-cross'] }}" = false ]]; then
-          echo "script=build" > $GITHUB_OUTPUT
-        else
+        use_cross=${{ inputs['use-cross'] }}
+        if [[ "$use_cross" = true ]]; then
           echo "script=cross" > $GITHUB_OUTPUT
+        else
+          echo "script=build" > $GITHUB_OUTPUT
         fi
         echo "target=$(npx @neon-rs/cli rust-target ${{ inputs.platform }})" >> $GITHUB_OUTPUT
       working-directory: ${{ inputs['working-directory' ]}}
@@ -94,6 +95,8 @@ runs:
         # Copy instead of move since Windows runners host temp directories
         # on a different device (which causes mv to fail).
         cp $platform_dir/$filename ${{ inputs['output-directory'] }}
+        # Diagnostics
+        tar tvzf ${{ inputs['output-directory'] }}/$filename
         echo "filename=$filename" > $GITHUB_OUTPUT
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
