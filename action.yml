@@ -93,7 +93,7 @@ runs:
         filename=$( (cd $platform_dir && npm pack --json | jq '.[0].filename' | xargs basename) )
         # Copy instead of move since Windows runners host temp directories
         # on a different device (which causes mv to fail).
-        cp $platform_dir/$filename > ${{ inputs['output-directory'] }}
+        cp $platform_dir/$filename ${{ inputs['output-directory'] }}
         echo "filename=$filename" > $GITHUB_OUTPUT
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
