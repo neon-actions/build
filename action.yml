@@ -5,14 +5,17 @@ inputs:
     description: 'Working directory to run commands from, relative to repo root.'
     required: false
     default: '.'
-  input-directory:
-    description: 'Directory containing pre-existing binary package structure, relative to working-directory.'
-    required: false
-    default: ''
   output-directory:
     description: 'Directory to produce the build, relative to working-directory.'
     required: false
     default: 'dist'
+  platform:
+    description: 'Node platform to build for (e.g. darwin-arm64 or linux-x64-gnu).'
+    required: true
+  platforms-directory:
+    description: 'Directory containing pre-existing binary package structure, relative to working-directory.'
+    required: false
+    default: 'platforms'
   node-version:
     description: 'Node version to install.'
     required: false
@@ -26,33 +29,33 @@ inputs:
     required: false
     default: ''
   github-release:
-    description: 'Filename or glob to fetch from GitHub releases.'
+    description: 'Publish the tarball to a GitHub Release.'
     required: false
-    default: ''
+    default: false
   npm-publish:
-    description: 'Publish to npm.'
+    description: 'Publish the tarball to npm.'
     required: false
     default: false
   use-cross:
     description: 'Use cross-rs to run the build instead of cargo.'
     required: false
     default: false
-  target:
-    description: 'Node target to build for.'
-    required: false
-    default: ''
 branding:
   icon: 'cpu'
   color: 'blue'
 runs:
   using: "composite"
   steps:
-    - name: Determine Rust Target
-      if: ${{ inputs.target != '' }}
-      id: target
+    - name: Compute Variables
+      id: vars
       shell: bash
       run: |
-        echo "rust=$(npx @neon-rs/cli rust-target ${{ inputs.target }})" > $GITHUB_OUTPUT
+        if [[ "${{ inputs['use-cross'] }}" = false ]]; then
+          echo "script=build" > $GITHUB_OUTPUT
+        else
+          echo "script=cross" > $GITHUB_OUTPUT
+        fi
+        echo "target=$(npx @neon-rs/cli rust-target ${{ inputs.platform }})" > $GITHUB_OUTPUT
       working-directory: ${{ inputs['working-directory' ]}}
     - name: Install Node
       uses: actions/setup-node@v3
@@ -75,57 +78,31 @@ runs:
       shell: bash
       run: npm install
       working-directory: ${{ inputs['working-directory'] }}
-    - name: Build Target
-      if: ${{ inputs['use-cross'] != 'true' && inputs.target != '' }}
-      shell: bash
-      env:
-        CARGO_BUILD_TARGET: ${{ steps.target.outputs.rust }}
-      run: npm run build
-      working-directory: ${{ inputs['working-directory'] }}
     - name: Build
-      if: ${{ inputs['use-cross'] != 'true' && inputs.target == '' }}
       shell: bash
-      run: npm run build
-      working-directory: ${{ inputs['working-directory'] }}
-    - name: Cross
-      if: ${{ inputs['use-cross'] == 'true' }}
       env:
-        CARGO_BUILD_TARGET: ${{ steps.target.outputs.rust }}
-      shell: bash
-      run: npm run cross
+        CARGO_BUILD_TARGET: ${{ steps.vars.outputs.target }}
+      run: npm run ${{ steps.vars.outputs.script }} -- -o "${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}/index.node"
       working-directory: ${{ inputs['working-directory'] }}
-    - name: Pack (from scratch)
-      if: ${{ inputs['input-directory'] == '' }}
+    - name: Pack
+      id: pack
       shell: bash
       run: |
-        if jq -e '.scripts | has("pack-target")' package.json > /dev/null ; then
-          npm run pack-target -- --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
-        elif jq -e '.scripts | has("pack-build")' package.json > /dev/null ; then
-          # this name was confusingly generic but we'll keep it for now for backwards compatibility
-          npm run pack-build -- --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
-        else
-          npx neon tarball --target ${{ steps.target.outputs.rust }} --out-dir ${{ inputs['output-directory'] }}
-        fi
-      working-directory: ${{ inputs['working-directory'] }}
-    - name: Pack (from existing package directory)
-      if: ${{ inputs['input-directory'] != '' }}
-      shell: bash
-      run: |
-        if jq -e '.scripts | has("pack-target")' package.json > /dev/null ; then
-          npm run pack-target -- --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
-        elif jq -e '.scripts | has("pack-build")' package.json > /dev/null ; then
-          npm run pack-build -- --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
-        else
-          npx neon tarball --in-dir ${{ inputs['input-directory'] }} --out-dir ${{ inputs['output-directory'] }}
-        fi
+        platform_dir=${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}
+        # NOTE: The sub(...) regexp is a workaround for https://github.com/npm/cli/issues/3405
+        filename=$((cd $platform_dir && npm pack --json | jq '.[0].filename | sub("@[^/]*/"; "")'))
+        # Copy instead of move since Windows runners host temp directories
+        # on a different device (which causes mv to fail).
+        cp $platform_dir/$filename > ${{ inputs['output-directory'] }}
+        echo "filename=$filename" > $GITHUB_OUTPUT
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
       if: ${{ inputs['github-release'] == 'true' }}
       uses: softprops/action-gh-release@v1
       with:
-        files: ${{ inputs['working-directory'] }}/${{ inputs['output-directory'] }}/*.tgz
+        files: ${{ inputs['working-directory'] }}/${{ inputs['output-directory'] }}/${{ steps.pack.outputs.filename }}
     - name: Publish
       if: ${{ inputs['npm-publish'] == 'true' }}
       shell: bash
-      run: npm publish
-      working-directory: ${{ inputs['working-directory'] }}
+      run: npm publish ${{ steps.pack.outputs.filename }}
+      working-directory: ${{ inputs['working-directory'] }}/${{ inputs['output-directory'] }}
