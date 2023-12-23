@@ -68,7 +68,7 @@ runs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: ${{ inputs['rust-version'] }}
-        target: ${{ steps.target.outputs.rust }}
+        target: ${{ steps.vars.outputs.target }}
         override: true
     - name: Install cross-rs
       if: ${{ inputs['use-cross'] == 'true' }}
