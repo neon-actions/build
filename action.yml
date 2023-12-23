@@ -92,6 +92,8 @@ runs:
         platform_dir=${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}
         # NOTE: The `xargs basename` component is a workaround for https://github.com/npm/cli/issues/3405
         filename=$( (cd $platform_dir && npm pack --json | jq '.[0].filename' | xargs basename) )
+        # Ensure the output directory exists.
+        mkdir -p ${{ inputs['output-directory'] }}
         # Copy instead of move since Windows runners host temp directories
         # on a different device (which causes mv to fail).
         cp $platform_dir/$filename ${{ inputs['output-directory'] }}
