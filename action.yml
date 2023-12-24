@@ -52,11 +52,11 @@ runs:
       run: |
         use_cross=${{ inputs['use-cross'] }}
         if [[ "$use_cross" = true ]]; then
-          echo "script=cross" > $GITHUB_OUTPUT
+          echo script=cross > $GITHUB_OUTPUT
         else
-          echo "script=build" > $GITHUB_OUTPUT
+          echo script=build > $GITHUB_OUTPUT
         fi
-        echo "target=$(npx @neon-rs/cli list-platforms | jq -r '.[\"${{ inputs.platform }}\"]')" >> $GITHUB_OUTPUT
+        echo target=$(npx @neon-rs/cli list-platforms | jq -r '.["${{ inputs.platform }}"]') >> $GITHUB_OUTPUT
       working-directory: ${{ inputs['working-directory' ]}}
     - name: Install Node
       uses: actions/setup-node@v3
