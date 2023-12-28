@@ -40,6 +40,10 @@ inputs:
     description: 'Use cross-rs to run the build instead of cargo.'
     required: false
     default: false
+  validate:
+    description: 'Validate tarball contents after building.'
+    required: false
+    default: true
 branding:
   icon: 'cpu'
   color: 'blue'
@@ -100,6 +104,44 @@ runs:
         # Diagnostics
         tar tvzf ${{ inputs['output-directory'] }}/$filename
         echo "filename=$filename" > $GITHUB_OUTPUT
+      working-directory: ${{ inputs['working-directory'] }}
+    - name: Validate
+      if: ${{ inputs['validate'] == 'true' }}
+      shell: bash
+      run: |
+        expected_arch=$(node -e 'console.log("${{ inputs['platform'] }}".split("-")[1])')
+        platform_dir=${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}
+        entry=$(cat $platform_dir/package.json | jq -r .main)
+        echo "entry=$entry"
+        entry_file=$(basename $entry)
+        echo "entry_file=$entry_file"
+        entry_dir=$(dirname $entry)
+        echo "entry_dir=$entry_dir"
+        os_config="${{ github.action_path }}/data/${{ runner.os }}.json"
+        echo "os_config=$os_config"
+        cmd=$(cat $os_config | jq -r .cmd)
+        echo "cmd=$cmd"
+        parse=$(cat $os_config | jq -r .parse)
+        echo "parse=$parse"
+        filename=${{ steps.pack.outputs.filename }}
+        echo "***** Validating: $filename *****"
+        without_ext=${filename%.*}
+        mkdir -p ${{ runner.temp }}/$without_ext
+        cp ${{ inputs['output-directory'] }}/$filename ${{ runner.temp }}/$without_ext
+        pushd ${{ runner.temp }}/$without_ext
+        tar xvzf ./$filename
+        cd package
+        cd $entry_dir
+        arch=$(eval "$cmd $entry_file | $parse")
+        echo "arch=$arch"
+        actual_arch=$(cat $os_config | jq -r ".arch | .[\"$arch\"]")
+        popd
+        echo "expected_arch=$expected_arch"
+        echo "actual_arch=$actual_arch"
+        if [ $expected_arch != $actual_arch ]; then
+          echo "$filename packed for ${{ inputs['platform'] }}, found $actual_arch"
+          exit 1
+        fi
       working-directory: ${{ inputs['working-directory'] }}
     - name: Release
       if: ${{ inputs['github-release'] == 'true' }}

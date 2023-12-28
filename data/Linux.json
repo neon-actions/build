@@ -1,0 +1,9 @@
+{
+  "cmd": "readelf -h",
+  "parse": "egrep '^\\s*Machine:' | sed -E 's/\\s*Machine:\\s*//' | awk '{ print tolower($0); }'",
+  "arch": {
+    "advanced micro devices x86-64": "x64",
+    "arm": "arm",
+    "arm64": "arm64"
+  }
+}
