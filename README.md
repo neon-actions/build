@@ -4,4 +4,4 @@ A GitHub action for building a Neon library and optionally publishing it to npm 
 
 ## Requirements
 
-- [@neon-rs/cli](https://www.npmjs.com/package/@neon-rs/cli) version >= 0.0.182
+- [@neon-rs/cli](https://www.npmjs.com/package/@neon-rs/cli) version >= 0.0.185

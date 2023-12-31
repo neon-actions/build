@@ -87,13 +87,13 @@ runs:
       shell: bash
       env:
         CARGO_BUILD_TARGET: ${{ steps.vars.outputs.target }}
+        NEON_DIST_OUTPUT: ${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}/index.node
       run: npm run ${{ steps.vars.outputs.script }}
       working-directory: ${{ inputs['working-directory'] }}
     - name: Pack
       id: pack
       shell: bash
       run: |
-        mv index.node "${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}/index.node"
         platform_dir=${{ inputs['platforms-directory'] }}/${{ inputs['platform'] }}
         # NOTE: The `xargs basename` component is a workaround for https://github.com/npm/cli/issues/3405
         filename=$( (cd $platform_dir && npm pack --json | jq '.[0].filename' | xargs basename) )
